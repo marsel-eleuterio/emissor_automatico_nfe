@@ -1,0 +1,170 @@
+{
+  "title": "ExtracaoPedidoNota_v1",
+  "description": "O que o modelo tira de um email de pedido de nota. Imposto, código de serviço, alíquota e dados do prestador NÃO entram aqui: vêm do cadastro e das regras.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["eh_pedido_de_nota", "solicitante", "cliente_mencionado", "pedidos", "prazo_envio", "instrucoes_de_envio", "observacoes"],
+  "properties": {
+    "eh_pedido_de_nota": {
+      "type": "boolean",
+      "description": "true se o email pede a emissão de uma ou mais notas"
+    },
+    "solicitante": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nome", "email"],
+      "properties": {
+        "nome": {"type": ["string", "null"]},
+        "email": {"type": ["string", "null"]}
+      }
+    },
+    "cliente_mencionado": {
+      "type": ["string", "null"],
+      "description": "Empresa que vai EMITIR a nota (o prestador), como aparece no texto ou no assunto. Não confundir com o tomador."
+    },
+    "pedidos": {
+      "type": "array",
+      "description": "Uma entrada por nota pedida, na ordem do email",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "tipo_documento", "tomador", "valor", "descricao", "periodo_ou_referencia",
+          "local_prestacao", "dados_bancarios", "exige_dados_bancarios_no_corpo",
+          "codigo_servico_sugerido", "vencimento", "itens_produto", "campos_faltantes", "evidencias"
+        ],
+        "properties": {
+          "tipo_documento": {
+            "type": "string",
+            "enum": ["NFS-e", "NF-e", "indefinido"],
+            "description": "NFS-e para serviço; NF-e para venda de produto"
+          },
+          "tomador": {
+            "type": "object",
+            "description": "Quem recebe a nota (contratante, 'faturar contra', destinatário)",
+            "additionalProperties": false,
+            "required": ["nome", "cnpj_cpf", "endereco", "cep", "municipio", "uf", "inscricao_municipal", "email"],
+            "properties": {
+              "nome": {"type": ["string", "null"]},
+              "cnpj_cpf": {"type": ["string", "null"], "description": "Como está no texto; só dígitos também serve"},
+              "endereco": {"type": ["string", "null"]},
+              "cep": {"type": ["string", "null"]},
+              "municipio": {"type": ["string", "null"]},
+              "uf": {"type": ["string", "null"]},
+              "inscricao_municipal": {"type": ["string", "null"]},
+              "email": {"type": ["string", "null"]}
+            }
+          },
+          "valor": {
+            "type": ["number", "null"],
+            "description": "Valor bruto desta nota em reais, ex.: 2607.00"
+          },
+          "descricao": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["texto", "tipo", "lacunas"],
+            "properties": {
+              "texto": {
+                "type": ["string", "null"],
+                "description": "Texto que o pedido manda pôr no corpo da nota, copiado sem reescrever. Sem os dados bancários."
+              },
+              "tipo": {
+                "type": "string",
+                "enum": ["pronta", "modelo_com_lacunas", "ausente"],
+                "description": "pronta = texto final; modelo_com_lacunas = exemplo com [colchetes] a preencher; ausente = não veio texto"
+              },
+              "lacunas": {"type": "array", "items": {"type": "string"}}
+            }
+          },
+          "periodo_ou_referencia": {
+            "type": ["string", "null"],
+            "description": "Período, mês de referência ou data do serviço, como está no texto"
+          },
+          "local_prestacao": {
+            "type": ["object", "null"],
+            "description": "Cidade onde o serviço aconteceu, quando o texto disser (ex.: cidade do show). null se não disser.",
+            "additionalProperties": false,
+            "required": ["municipio", "uf"],
+            "properties": {
+              "municipio": {"type": ["string", "null"]},
+              "uf": {"type": ["string", "null"]}
+            }
+          },
+          "dados_bancarios": {
+            "type": ["object", "null"],
+            "description": "Conta para depósito informada no email. null se não vier.",
+            "additionalProperties": false,
+            "required": ["banco", "agencia", "conta", "pix", "titular", "doc_titular", "tipo_conta"],
+            "properties": {
+              "banco": {"type": ["string", "null"]},
+              "agencia": {"type": ["string", "null"]},
+              "conta": {"type": ["string", "null"]},
+              "pix": {"type": ["string", "null"]},
+              "titular": {"type": ["string", "null"]},
+              "doc_titular": {"type": ["string", "null"]},
+              "tipo_conta": {"type": ["string", "null"], "enum": ["PJ", "PF", null]}
+            }
+          },
+          "exige_dados_bancarios_no_corpo": {
+            "type": "boolean",
+            "description": "true se o pedido manda pôr a conta no corpo da nota"
+          },
+          "codigo_servico_sugerido": {
+            "type": ["string", "null"],
+            "description": "Código ou atividade que o solicitante sugeriu, se sugeriu"
+          },
+          "vencimento": {
+            "type": ["string", "null"],
+            "description": "Data de vencimento/pagamento desta nota, AAAA-MM-DD"
+          },
+          "itens_produto": {
+            "type": "array",
+            "description": "Só para NF-e: produtos pedidos",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["descricao", "quantidade", "valor_unitario"],
+              "properties": {
+                "descricao": {"type": "string"},
+                "quantidade": {"type": ["number", "null"]},
+                "valor_unitario": {"type": ["number", "null"]}
+              }
+            }
+          },
+          "campos_faltantes": {
+            "type": "array",
+            "description": "Informações necessárias que o email não trouxe",
+            "items": {"type": "string"}
+          },
+          "evidencias": {
+            "type": "array",
+            "description": "Trecho do email que sustenta cada campo importante",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["campo", "trecho"],
+              "properties": {
+                "campo": {"type": "string"},
+                "trecho": {"type": "string"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "prazo_envio": {
+      "type": ["string", "null"],
+      "description": "Até quando a nota precisa ser enviada, AAAA-MM-DD ou AAAA-MM-DDTHH:MM"
+    },
+    "instrucoes_de_envio": {
+      "type": "array",
+      "description": "Instruções sobre para quem e como devolver a nota",
+      "items": {"type": "string"}
+    },
+    "observacoes": {
+      "type": "array",
+      "description": "Outras exigências do pedido que a equipe precisa ver",
+      "items": {"type": "string"}
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Depurar eval: regex",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/harness/run_eval.py",
+      "args": ["--extrator", "regex"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Depurar eval: Ollama qwen3.5:9b",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/harness/run_eval.py",
+      "args": ["--extrator", "ollama", "--modelo", "qwen3.5:9b"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "env": { "NFSE_OLLAMA_PENSAR": "0" },
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Depurar eval: Claude pelo plano (haiku)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/harness/run_eval.py",
+      "args": ["--extrator", "claude-code", "--modelo", "haiku", "--casos", "A"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Depurar eval: Gemini pago (crédito do Google AI Ultra)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/harness/run_eval.py",
+      "args": ["--extrator", "openai", "--provedor", "gemini", "--modelo", "gemini-3.8-flash", "--casos", "A"],
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env",
+      "env": { "NFSE_NIVEL_PAGO": "1" },
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "Depurar testes do harness",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/test_encanamento.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
+  ]
+}

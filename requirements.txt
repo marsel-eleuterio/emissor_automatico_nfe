@@ -1,0 +1,6 @@
+# Harness da Fase 0
+jsonschema>=4.18
+
+# Opcional: extrator "claude" pela API da Anthropic. No plano Pro não há crédito de API;
+# use o extrator "claude-code", que não precisa deste pacote.
+# anthropic

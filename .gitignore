@@ -1,0 +1,20 @@
+# Dados pessoais e bancários de clientes: nunca no git
+raw/
+txt/
+data/inputs/
+data/casos.json
+data/gabarito_notas.json
+data/gabarito_manual.json
+data/rotulos_extracao.json
+data/cadastro_rascunho.json
+data/mapa_anonimizacao.json
+data_anon/
+*.zip
+reports/saidas_*.json
+reports/avaliacao_*
+
+# Ambiente local
+.venv/
+.env
+__pycache__/
+*.pyc

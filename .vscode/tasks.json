@@ -1,0 +1,116 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Preparar ambiente",
+      "detail": "Cria a .venv, instala dependências, roda os testes e mostra GPU, RAM, Ollama e login do Claude",
+      "type": "process",
+      "command": "powershell",
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}\\scripts\\setup.ps1"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Testes do harness",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": ["-I", "tests/test_encanamento.py"],
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Eval: oráculo",
+      "detail": "Extração perfeita: testa só cadastro e regras",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": ["-I", "harness/run_eval.py", "--extrator", "oraculo"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Eval: regex",
+      "detail": "Linha de base sem LLM",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": ["-I", "harness/run_eval.py", "--extrator", "regex"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Eval: Ollama (um modelo)",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": ["-I", "harness/run_eval.py", "--extrator", "ollama", "--modelo", "${input:modeloOllama}"],
+      "options": { "env": { "NFSE_OLLAMA_PENSAR": "${input:pensar}" } },
+      "problemMatcher": []
+    },
+    {
+      "label": "Eval: Ollama (todos os modelos)",
+      "detail": "Baixa os quatro modelos e roda cada um com e sem raciocínio",
+      "type": "process",
+      "command": "powershell",
+      "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}\\scripts\\eval_local.ps1"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Eval: Claude pelo plano",
+      "detail": "claude -p logado no plano Pro; desligue Help improve Claude antes de usar dado real",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": ["-I", "harness/run_eval.py", "--extrator", "claude-code", "--modelo", "${input:modeloClaude}"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Eval: Gemini pago (crédito do Google AI Pro)",
+      "detail": "Precisa de GEMINI_API_KEY de um projeto com faturamento no ambiente (setx e reabrir o VS Code)",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": ["-I", "harness/run_eval.py", "--extrator", "openai", "--provedor", "gemini", "--modelo", "${input:modeloGemini}"],
+      "options": { "env": { "NFSE_NIVEL_PAGO": "1" } },
+      "problemMatcher": []
+    },
+    {
+      "label": "Comparativo",
+      "detail": "Tabela modelo × campo em reports/comparativo.md",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": ["-I", "harness/comparar.py"],
+      "problemMatcher": []
+    },
+    {
+      "label": "Cobertura dos campos",
+      "detail": "De onde vem cada campo da nota: email, cadastro, regra ou consulta",
+      "type": "process",
+      "command": "${command:python.interpreterPath}",
+      "args": ["-I", "harness/cobertura.py"],
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "modeloOllama",
+      "type": "pickString",
+      "description": "Modelo do Ollama",
+      "options": ["qwen3.5:9b", "gemma4:12b", "qwen3:14b", "qwen3.6:35b-a3b"],
+      "default": "qwen3.5:9b"
+    },
+    {
+      "id": "pensar",
+      "type": "pickString",
+      "description": "Raciocínio do modelo (0 desliga, 1 liga)",
+      "options": ["0", "1"],
+      "default": "0"
+    },
+    {
+      "id": "modeloClaude",
+      "type": "pickString",
+      "description": "Modelo do Claude pelo plano",
+      "options": ["haiku", "sonnet"],
+      "default": "haiku"
+    },
+    {
+      "id": "modeloGemini",
+      "type": "pickString",
+      "description": "Modelo do Gemini no nível pago (4 Argon é o teto de qualidade e custa mais)",
+      "options": ["gemini-3.8-flash", "gemini-4-argon"],
+      "default": "gemini-3.8-flash"
+    }
+  ]
+}
