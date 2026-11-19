@@ -54,18 +54,26 @@ def preencher_lacunas(texto: str, cliente: dict) -> tuple[str, bool]:
     return re.sub(r"\s*\[[^\]]+\]", " " + padrao, texto, count=1), True
 
 
+def _banco_preenchido(b: dict | None) -> dict | None:
+    if not b:
+        return None
+    return b if any(b.get(k) for k in ("banco", "agencia", "conta", "pix")) else None
+
+
 def compor_nfse(pedido: dict, cliente: dict) -> dict:
     cod = cliente["codigos_servico"][0]
     incid, motivo = municipio_incidencia(cod["nacional"], pedido.get("local_prestacao"), cliente)
     valor = dec(pedido.get("valor"))
-    aliq = Decimal(cliente["aliquota_lei_12741_pct"])
-    lei_valor = (valor * aliq / 100).quantize(Decimal("0.01")) if valor is not None else None
+    aliq = Decimal(cliente["aliquota_lei_12741_pct"]) if cliente.get("aliquota_lei_12741_pct") is not None else None
+    lei_valor = (valor * aliq / 100).quantize(Decimal("0.01")) if (valor is not None and aliq is not None) else None
 
     d = pedido.get("descricao") or {}
     base = d.get("texto") or ""
     preenchida = False
     if d.get("tipo") == "modelo_com_lacunas":
         base, preenchida = preencher_lacunas(base, cliente)
+    elif not base and cliente.get("descricao_padrao"):
+        base, preenchida = cliente["descricao_padrao"], True
 
     partes = [base] if base else []
     ref = pedido.get("periodo_ou_referencia")
@@ -75,7 +83,8 @@ def compor_nfse(pedido: dict, cliente: dict) -> dict:
         partes.append(f"Referente a: {ref}.")
     if valor is not None and brl(valor) not in base:
         partes.append(f"Valor: R$ {brl(valor)}.")
-    banco = pedido.get("dados_bancarios") or (cliente.get("dados_bancarios") if pedido.get("exige_dados_bancarios_no_corpo") else None)
+    usa_banco_cad = pedido.get("exige_dados_bancarios_no_corpo") or cliente.get("incluir_banco_sempre")
+    banco = _banco_preenchido(pedido.get("dados_bancarios")) or (cliente.get("dados_bancarios") if usa_banco_cad else None)
     if banco:
         txt = f"Dados bancários para depósito: Banco {banco['banco']} Agência {banco['agencia']} Conta {banco['conta']}"
         if banco.get("pix"):

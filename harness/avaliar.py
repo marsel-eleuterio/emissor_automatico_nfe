@@ -19,7 +19,7 @@ def checar_pedido(e: dict, r: dict) -> list[tuple[str, bool, object, object]]:
     out = []
     out.append(("tipo_documento", e.get("tipo_documento") == r.get("tipo_documento"), r.get("tipo_documento"), e.get("tipo_documento")))
     te, tr = (e.get("tomador") or {}).get("cnpj_cpf"), r["tomador"].get("cnpj_cpf")
-    out.append(("tomador_doc", doc_igual(te, tr), tr, te))
+    out.append(("tomador_doc", doc_igual(te, tr) if tr else not te, tr, te))
     out.append(("valor", dec(e.get("valor")) == dec(r.get("valor")), r.get("valor"), e.get("valor")))
     de, dr = e.get("descricao") or {}, r.get("descricao") or {}
     out.append(("descricao_tipo", de.get("tipo") == dr.get("tipo"), dr.get("tipo"), de.get("tipo")))
@@ -77,21 +77,21 @@ def checar_ponta_a_ponta(ext: dict, meta: dict, cadastro: dict, notas_gab: list[
         linhas.append(("tomador_doc", doc_igual(c["tomador_doc"], g["tomador"]["doc"]), g["tomador"]["doc"], c["tomador_doc"]))
         linhas.append(("valor", c["valor_servico"] == dec(g["valor_servico"]), g["valor_servico"], c["valor_servico"]))
         if g["tipo"] == "NFS-e":
-            linhas.append(("cod_trib_nacional", c["cod_trib_nacional"] == g["servico"]["cod_trib_nacional"],
-                           g["servico"]["cod_trib_nacional"], c["cod_trib_nacional"]))
-            mi_g, mi_c = g["iss"]["municipio_incidencia"], c["municipio_incidencia"]
-            linhas.append(("municipio_incidencia", norm(mi_g["municipio"]) == norm(mi_c["municipio"]),
-                           mi_g["municipio"], mi_c["municipio"]))
+            linhas.append(("cod_trib_nacional", c.get("cod_trib_nacional") == g["servico"]["cod_trib_nacional"],
+                           g["servico"]["cod_trib_nacional"], c.get("cod_trib_nacional")))
+            mi_g, mi_c = g["iss"]["municipio_incidencia"], c.get("municipio_incidencia") or {}
+            linhas.append(("municipio_incidencia", norm(mi_g["municipio"]) == norm(mi_c.get("municipio")),
+                           mi_g["municipio"], mi_c.get("municipio")))
             lv = g["lei_12741"]["valor"]
-            linhas.append(("lei_12741_valor", c["lei_12741_valor"] == dec(lv), lv, c["lei_12741_valor"]))
-            linhas.append(("texto_irrf", c["texto_dispensa_irrf"] == g["texto_dispensa_irrf"], g["texto_dispensa_irrf"], c["texto_dispensa_irrf"]))
+            linhas.append(("lei_12741_valor", c.get("lei_12741_valor") == dec(lv), lv, c.get("lei_12741_valor")))
+            linhas.append(("texto_irrf", c.get("texto_dispensa_irrf") == g["texto_dispensa_irrf"], g["texto_dispensa_irrf"], c.get("texto_dispensa_irrf")))
             cg = g["banco_na_descricao"]["conta"]
-            linhas.append(("banco_no_corpo", conta_igual((c["banco"] or {}).get("conta"), cg) if cg else not c["banco"],
-                           cg, (c["banco"] or {}).get("conta")))
-            linhas.append(("descricao_nucleo", contido(c["descricao_base"], g["descricao"]), g["descricao"][:120] + "…", c["descricao_base"]))
+            linhas.append(("banco_no_corpo", conta_igual((c.get("banco") or {}).get("conta"), cg) if cg else not c.get("banco"),
+                           cg, (c.get("banco") or {}).get("conta")))
+            linhas.append(("descricao_nucleo", contido(c.get("descricao_base"), g["descricao"]), g["descricao"][:120] + "…", c.get("descricao_base")))
         else:
             it_g = g["itens"][0]
-            it_c = (c["itens"] or [{}])[0]
+            it_c = (c.get("itens") or [{}])[0]
             linhas.append(("produto_catalogo", it_c.get("codigo") == it_g["codigo"], it_g["codigo"], it_c.get("codigo")))
     return linhas, compostas
 

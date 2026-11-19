@@ -5,6 +5,7 @@ Se o mesmo extrator rodou mais de uma vez, vale a rodada mais recente.
 """
 from __future__ import annotations
 
+import argparse
 import csv
 import sys
 from collections import defaultdict
@@ -18,8 +19,18 @@ CRITICOS = {"tomador_doc", "valor", "local_prestacao", "descricao_texto", "munic
 
 
 def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--lote", help="filtra relatórios de um lote específico, ex.: data_lote2")
+    args = ap.parse_args()
+
     ultimas: dict[str, Path] = {}
     for p in sorted(RELATORIOS.glob("avaliacao_*.csv")):
+        if args.lote:
+            if f"_{args.lote}_" not in p.name:
+                continue
+        else:
+            if "_data_lote2_" in p.name:
+                continue
         with open(p, encoding="utf-8") as f:
             primeira = next(csv.DictReader(f), None)
         if primeira:
@@ -51,7 +62,8 @@ def main() -> None:
         tot = sum(v[e][1] for v in acertos.values() if e in v)
         totais.append(f"**{ok}/{tot}**")
     linhas.append("| **Total** | " + " | ".join(totais) + " |")
-    (RELATORIOS / "comparativo.md").write_text("\n".join(linhas) + "\n", encoding="utf-8")
+    nome_out = f"comparativo_{args.lote}.md" if args.lote else "comparativo.md"
+    (RELATORIOS / nome_out).write_text("\n".join(linhas) + "\n", encoding="utf-8")
     print("\n".join(linhas))
 
 

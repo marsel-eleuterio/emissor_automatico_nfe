@@ -77,7 +77,8 @@ def main() -> None:
     for campo, por_nota in matriz.items():
         linhas.append(f"| {campo} | " + " | ".join(por_nota.get(c, NA) for c in colunas) + " |")
     RELATORIOS.mkdir(exist_ok=True)
-    (RELATORIOS / "cobertura_campos.md").write_text("\n".join(linhas) + "\n", encoding="utf-8")
+    nome_arq = "cobertura_campos.md" if DADOS.name == "data" else f"cobertura_campos_{DADOS.name}.md"
+    (RELATORIOS / nome_arq).write_text("\n".join(linhas) + "\n", encoding="utf-8")
     print("\n".join(linhas))
 
 

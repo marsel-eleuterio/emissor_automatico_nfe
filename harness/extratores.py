@@ -27,7 +27,8 @@ from comum import RAIZ, digitos, ler_json
 from compor import identificar_cliente
 
 SCHEMA = ler_json(RAIZ / "schema" / "extracao_v1.json")
-PROMPT = (RAIZ / "harness" / "prompt_v1.md").read_text(encoding="utf-8")
+PROMPT_ARQ = RAIZ / "harness" / os.environ.get("NFSE_PROMPT", "prompt_v2.md")
+PROMPT = PROMPT_ARQ.read_text(encoding="utf-8")
 
 
 def mensagem_usuario(texto: str) -> str:
@@ -222,7 +223,7 @@ class ClaudeCode:
             "--output-format", "json",
             # ASCII puro: atravessa a linha de comando do Windows sem estragar acentos.
             "--json-schema", json.dumps(SCHEMA, separators=(",", ":")),
-            "--system-prompt-file", str(RAIZ / "harness" / "prompt_v1.md"),
+            "--system-prompt-file", str(PROMPT_ARQ),
             "--model", self.modelo,
             "--tools", "",                 # só extrai: sem ler arquivo nem rodar comando
             "--disallowedTools", "mcp__*",

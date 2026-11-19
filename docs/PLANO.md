@@ -48,11 +48,43 @@ A mediana entre pedido e resposta foi de 3h09; o pedido da noite esperou o dia s
 - **Prazos no próprio pedido** (C e D, inclusive “até 8h de terça”): a fila pode ser ordenada por prazo.
 - **Erros manuais que somem com a automação:** o PDF do caso A foi salvo com o nome de outra fundação; “músico” e “musico” em duas notas do mesmo pedido; o rodapé da Lei 12.741 escrito de 4 jeitos.
 
-**Resultado do harness**
+**Resultado do harness (Lote 1 — 5 pedidos / 6 notas)**
 
-- Com extração perfeita, cadastro e regras reproduziram os 49 campos conferidos nas 6 notas. É otimista: o cadastro saiu dessas mesmas notas.
-- Uma linha de base só com regex acertou 58 de 65 campos de extração, mas errou o que custa caro: mandaria o ISS das 2 notas de show para São Paulo, perdeu a descrição de A e D e não achou o produto da NF-e. Esse é o trabalho do LLM.
-- Nenhum LLM rodou ainda. O harness (gabarito, schema v1, prompt v1) está pronto para o Claude pelo plano e para os modelos locais.
+- Com extração perfeita (oráculo), cadastro e regras reproduziram os 49 campos conferidos nas 6 notas (114/114 total).
+- A linha de base só com regex acertou 58/65 na extração e 44/49 na nota composta (com o fallback de `descricao_padrao`), mas errou o que custa caro: mandaria o ISS das 2 notas de show para São Paulo e não achou o produto da NF-e.
+- Primeira rodada com LLMs (`reports/comparativo.md`):
+  - **Claude Haiku e Sonnet** (`claude-code`, plano Pro): **114/114** (100% na extração e na nota composta com `prompt_v1.md`; com `prompt_v2.md`, Haiku manteve **49/49 = 100%** na nota composta).
+  - **Gemini 3.5 Flash Lite** (nível gratuito no lote anonimizado `data_anon/`): **111/114** (63/65 extração, 48/49 = 98% nota composta, ~4,5 s/caso). `gemini-3.1-flash-lite` marcou 105/114; `gemini-3.8-flash` sofreu instabilidade (503/timeout) no nível gratuito.
+  - **Modelos locais (RTX 4070 8 GB, Ollama, sem thinking):** `gemma4:12b:sem-pensar` **103/114** (47/49 = 96% na nota composta), `qwen3:14b:sem-pensar` **102/114**, `qwen3.5:9b:sem-pensar` **93/114**. Com thinking ativado em `num_ctx=8192`, os modelos locais esgotam a janela antes de fechar o JSON.
+
+## Fase 0 (Lote 2): 22 pedidos e 24 notas reais
+
+Um segundo lote foi extraído de um arquivo `.msg` com 23 threads reais encaminhadas pelo escritório (22 pedidos únicos após descartar 1 duplicata exata, 24 NFS-e em PDF, 19 clientes distintos), incluindo 15 DANFSe do Emissor Nacional, 7 NFS-e municipais de São Paulo, 1 de São Caetano do Sul e 1 prestador de Mauá — além de tomadores em outros estados (CE, BA) e no interior/litoral de SP.
+
+**O que apareceu de novo no Lote 2**
+
+- **Erros manuais de Lei 12.741 em 8 de 24 notas (33%):** 5 erros reais de cálculo ou copiar-e-colar do mês anterior nas notas emitidas à mão pelo escritório (L04, L11, L13, L19, L21) e 3 truncamentos de R$ 0,01 (L06, L07, L14). A fórmula determinística em `compor.py` corrige todos eles.
+- **Pedidos recorrentes sem tomador nem valor no email (2 de 22 — L04 e L11):** mensagens como “mesmo valor do mês anterior” ou apenas o mês de referência. Na Fase 1, precisam de consulta ao histórico ou retorno automático em `AguardaCliente`.
+- **Cliente com mais de um código de serviço (L15/L16/L17):** usa dois códigos distintos conforme o serviço/tomador, confirmando a regra do plano de restringir a escolha aos códigos do cadastro com alerta.
+- **Competência:** igual à data de emissão em **21 de 24 NFS-e (87,5%)**; exceções quando o email pede data específica (L10a/b) ou em RPS convertido no mês seguinte (L02a).
+- **Casos de borda reais no texto:** dois CNPJs no mesmo email (intermediário / “aos cuidados de” em L05 e L18), restrição negativa (“não mencionar nome do cliente nem nº do pedido” em L19), threads reaproveitadas de meses anteriores (L13), pedido respondido em dois turnos (L18), cancelamento/retificação por código rejeitado (L22), pedido mínimo sem descrição (L21, coberto pela `descricao_padrao` do cadastro) e 4 clientes que sempre trazem conta bancária no corpo mesmo sem pedido no email (`incluir_banco_sempre`).
+
+**Evolução no harness do Lote 2 (`prompt_v1.md` → `prompt_v2.md` + regras em `compor.py`)**
+
+| Extrator | v1 (Total) | v2 Extração | v2 Nota composta | v2 Total | Ganho |
+| --- | --- | --- | --- | --- | --- |
+| `oraculo` (teto das regras)* | 455/476 | 260/260 (100%) | 203/216 (94%) | **463/476** | +8 |
+| `claude-code:sonnet` | 429/476 | 254/260 (98%) | 200/216 (93%) | **454/476** | +25 |
+| `claude-code:haiku` | 424/476 | 251/260 (97%) | 198/216 (92%) | **449/476** | +25 |
+| `ollama:gemma4:12b:sem-pensar` (local) | 404/476 | 245/260 (94%) | 197/216 (91%) | **442/476** | **+38** |
+| `regex` (linha de base) | 336/462 | 188/260 (72%) | 148/202 (73%) | 336/462 | — |
+
+*\*As 13 divergências restantes do oráculo em `reports/comparativo_data_lote2.md` não são erros do sistema: 7 são erros manuais da Lei 12.741 nos PDFs emitidos à mão, 4 são `tomador_doc`/`valor` ausentes nos 2 pedidos recorrentes (L04 e L11), 1 é o segundo código de serviço em L16 e 1 é variação textual no corpo de L17.*
+
+Principais conclusões do Lote 2:
+- **Sonnet (`prompt_v2.md`)** ficou a apenas **3 pontos do oráculo** na nota composta (200/216 vs 203/216), com 100% em `tomador_doc`, `valor`, `local_prestacao`, `tipo_documento`, `n_pedidos`, `prazo_envio` e `vencimento` (~9,3 s/caso).
+- **Haiku (`prompt_v2.md`)** chegou a **449/476** (198/216 na nota composta; 24/24 em valor, local e dados bancários), ficando atrás do Sonnet basicamente em `tomador_doc` (21/24: perdeu o tomador compartilhado de L08a/b e a retificação L22).
+- **Gemma 4 12B local (`sem-pensar`, `prompt_v2.md`)** deu um salto de **+38 pontos**, chegando a **442/476** e **197/216 (91%) na nota composta** — empatado com Sonnet e Haiku em `descricao_nucleo` (21/24) e a apenas 1 ponto do Haiku na nota composta, rodando 100% offline na RTX 4070 (~55 s/caso). Perdeu 3 `tomador_doc` (L08a/b e L20).
 
 ## Decisões tomadas
 
@@ -188,7 +220,7 @@ Um email pode gerar várias notas. Anexos (planilha, PDF, print) entram como con
 
 Qualquer alerta tira a nota da emissão automática da Fase 4.
 
-**Qual modelo extrai:** no desenvolvimento, modelos locais, sem custo e sem dado saindo do notebook, com o Claude do plano e o Gemini pago como referências; o provedor de produção sai do eval. No notebook, que tudo indica ter a RTX 4070 de 8 GB (falta confirmar com nvidia-smi), quatro modelos locais rodam no harness contra o mesmo gabarito:
+**Qual modelo extrai:** no desenvolvimento, modelos locais, sem custo e sem dado saindo do notebook, com o Claude do plano e o Gemini pago como referências; o provedor de produção sai do eval. No notebook, equipado com RTX 4070 Laptop GPU de 8 GB VRAM e 32 GB de RAM (confirmado via `nvidia-smi`), quatro modelos locais rodam no harness contra o mesmo gabarito:
 
 | Modelo (tag no Ollama) | Na 4070 de notebook (8 GB) | Papel no teste |
 | --- | --- | --- |
@@ -260,12 +292,13 @@ O piloto com emissão real deve cair em 2027, por isso o adaptador já nasce com
 **Fase 0 · Diagnóstico e gabarito** (3 a 5 dias de trabalho)
 
 - [x] Primeiro lote: 5 pedidos com as 6 notas em PDF
-- [ ] Segundo lote: 30 a 50 pedidos, com XML e .eml (ver Próximo passo)
-- [x] Gabarito das 6 notas e rótulos de extração dos 5 pedidos
-- [x] Schema v1, prompt v1 e harness de avaliação
-- [x] Primeira rodada com LLM no harness: Claude (Haiku e Sonnet) pelo plano Pro, via claude -p, Gemini no lote anonimizado (`gemini-3.5-flash-lite` e `gemini-3.1-flash-lite`) e, na RTX 4070, Qwen3.5 9B, Gemma 4 12B e Qwen3 14B
+- [x] Segundo lote (via `.msg` + PDFs): 22 pedidos únicos com 24 NFS-e em PDF, rotulados e avaliados em `data_lote2/` (`prompt_v1.md` → `prompt_v2.md` + parser municipal SP + regras em `compor.py`)
+- [ ] Amostra complementar com XML e `.eml` originais (SPF/DKIM, anexos, retenções, tomador PF e mais NF-e)
+- [x] Gabarito das 6 notas (Lote 1) e 24 notas (Lote 2) e rótulos de extração revisados à mão
+- [x] Schema v1, prompt v1/v2 e harness de avaliação (com suporte a DANFSe nacional e NFS-e municipal SP)
+- [x] Rodadas com LLM no harness: Lote 1 (Claude Haiku/Sonnet, Gemini `3.5-flash-lite`/`3.1-flash-lite` em `data_anon/`, Ollama Qwen3.5 9B, Gemma 4 12B e Qwen3 14B) e Lote 2 v1 × v2 (Claude Sonnet/Haiku e Gemma 4 12B local)
 - [x] Ambiente sem custo no notebook: Ollama com os modelos da tabela, “Help improve Claude” desligado, Claude Code no VS Code e o `claude` logado no plano, além do anonimizador `harness/anonimizar.py` (`data_anon/`)
-- [ ] Ativar o crédito mensal de US$ 10 do Google AI Pro no Google Developer Program ou direto no AI Studio e criar a chave do Gemini num projeto com faturamento
+- [ ] Ativar o crédito mensal de US$ 10 do Google AI Pro no Google Developer Program ou direto no AI Studio e criar a chave do Gemini num projeto com faturamento (opcional; nível gratuito já funciona com `data_anon/`)
 - [ ] Puxar do Jettax o histórico de notas dos clientes para rascunhar o cadastro
 - [ ] Mapear a carteira: regime, município, volume, procuração ou A1
 - [ ] Testar emissão por procuração na produção restrita
@@ -366,20 +399,12 @@ Treze perguntas estão em aberto; as quatro primeiras definem o tamanho do MVP e
 
 ## Próximo passo
 
-O próximo lote são 30 a 50 pedidos com as notas que saíram deles, agora com o XML de cada nota e o .eml de cada pedido.
+Com 27 pedidos únicos e 30 notas reais já validados em PDF (Lote 1 + Lote 2), o foco agora é fechar os itens que abrem a Fase 1:
 
-- **Formato:** .eml do pedido (no Gmail pelo computador, menu de três pontos, opção de baixar a mensagem) e XML da nota (baixado no Emissor Nacional). O XML dispensa a leitura do PDF; o .eml mantém SPF/DKIM e anexos.
-- **Nome dos arquivos:** `pedido_07.eml` e `nota_07.xml`; várias notas no mesmo pedido viram `nota_07a`, `nota_07b`.
-- **Variedade que falta:** retenção de ISS, IRRF ou INSS; tomador pessoa física; tomador ou serviço fora de São Paulo; pedido com anexo (planilha, PDF); pedido corrigido depois; cancelamento ou substituição; mais NF-e e mais pedidos vindos de WhatsApp.
-- **Junto, do escritório:** a alíquota efetiva do Simples de cada cliente no mês e a lista de clientes que pedem nota por email.
-- **Dados pessoais:** CNPJ e razão social de empresas podem ir como estão. CPF, telefone e endereço de pessoa física: troque por valores fictícios no mesmo formato, iguais no pedido e no XML.
-
-**Depois disso:**
-
-1. Rodar o extrator com Claude e com o Qwen local nos 5 casos atuais e comparar com a linha de base.
-2. Incluir o lote novo no harness e rotular os pedidos a partir da saída do LLM, corrigida à mão.
-3. Montar o cadastro a partir do histórico, não das notas de teste, e medir de novo a nota composta.
-4. Fechar a meta de acurácia por campo que abre a Fase 1.
+- **Respostas do escritório (4 perguntas que definem o MVP):** mapa da carteira (quantos clientes, regime e município), volume mensal, situação de procuração eletrônica vs A1, e volume de NF-e/WhatsApp.
+- **Cadastro a partir do histórico real:** puxar do Jettax o histórico de notas e a alíquota efetiva mensal do Simples para montar o cadastro sem olhar para as notas de teste — e reavaliar a nota composta sem viés.
+- **Amostra complementar com `.eml` e XML:** casos ainda ausentes nos 27 pedidos — retenção de ISS, IRRF ou INSS; tomador pessoa física; pedido com anexo (planilha, PDF); mais NF-e de produto. O `.eml` preserva SPF/DKIM e anexos; o XML substitui o parser de PDF.
+- **Testar procuração eletrônica na produção restrita da Sefin Nacional** e definir a meta de acurácia por campo (e escolha do provedor de produção entre Claude API, Gemini API ou Gemma 4 local) que destrava a Fase 1.
 
 ## Referências
 

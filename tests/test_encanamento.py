@@ -265,7 +265,35 @@ def test_anonimizar():
         return ok_e, tot_e, ok_n, tot_n
 
     assert placar(DADOS, "oraculo") == placar(destino, "oraculo") == (65, 65, 49, 49)
-    assert placar(DADOS, "regex") == placar(destino, "regex") == (58, 65, 43, 49)
+    assert placar(DADOS, "regex") == placar(destino, "regex") == (58, 65, 44, 49)
+
+
+def test_compor_regras_lote2():
+    from compor import compor_nfse
+
+    cli = {
+        "cnpj": "11.111.111/0001-11",
+        "municipio": "São Paulo",
+        "uf": "SP",
+        "codigos_servico": [{"nacional": "17.06.01", "municipal": "001"}],
+        "descricao_padrao": "Serviços comissionados",
+        "aliquota_lei_12741_pct": None,
+        "dados_bancarios": {"banco": "260", "agencia": "0001", "conta": "12345-6"},
+        "incluir_banco_sempre": True,
+        "texto_dispensa_irrf": False,
+    }
+    ped = {
+        "tomador": {"cnpj_cpf": "22.222.222/0001-22"},
+        "valor": 1000.0,
+        "descricao": {"texto": None, "tipo": "ausente", "lacunas": []},
+        "dados_bancarios": {"banco": None, "agencia": None, "conta": None, "pix": None},
+        "exige_dados_bancarios_no_corpo": False,
+    }
+    nota = compor_nfse(ped, cli)
+    assert nota["descricao_base"] == "Serviços comissionados"
+    assert nota["descricao_preenchida_pelo_cadastro"] is True
+    assert nota["lei_12741_valor"] is None
+    assert nota["banco"]["conta"] == "12345-6"
 
 
 if __name__ == "__main__":

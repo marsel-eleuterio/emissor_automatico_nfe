@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from comum import DADOS, gravar_json, ler_json  # noqa: E402
-from parse_danfse import parse_danfse, pdf_text  # noqa: E402
+from parse_danfse import parse_pdf_nfse, pdf_text  # noqa: E402
 
 
 def main() -> None:
@@ -22,7 +22,7 @@ def main() -> None:
             if nota.get("manual"):
                 g = dict(manual[nota["id"]])
             else:
-                g = parse_danfse(pdf_text((DADOS / nota["pdf"]).resolve()))
+                g = parse_pdf_nfse(pdf_text((DADOS / nota["pdf"]).resolve()))
             g["caso"] = caso["caso"]
             g["nome_original"] = nota.get("nome_original")
             saida[nota["id"]] = g

@@ -9,7 +9,10 @@ data/rotulos_extracao.json
 data/cadastro_rascunho.json
 data/mapa_anonimizacao.json
 data_anon/
+data_lote2/
+data_lote2_anon/
 *.zip
+*.msg
 reports/saidas_*.json
 reports/avaliacao_*
 
